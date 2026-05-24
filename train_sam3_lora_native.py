@@ -970,6 +970,10 @@ class SAM3TrainerNative:
 
         epochs = self.config["training"]["num_epochs"]
         best_val_loss = float('inf')
+        early_stopping_patience = self.config["training"].get("early_stopping_patience", 5)
+        early_stopping_counter  = 0
+        early_stopping_triggered = False
+        print_rank0(f"Early stopping patience: {early_stopping_patience} epochs")
         print_rank0(f"Starting training for {epochs} epochs...")
 
         if has_validation:
@@ -1129,9 +1133,16 @@ class SAM3TrainerNative:
 
                     if avg_val_loss < best_val_loss:
                         best_val_loss = avg_val_loss
+                        early_stopping_counter = 0
                         save_lora_weights(model_to_save, str(out_dir / "best_lora_weights.pt"))
-                        print(f"✓ New best model saved (val_loss: {avg_val_loss:.6f})")
-
+                        print_rank0(f"✓ New best model saved (val_loss: {avg_val_loss:.6f})")
+                    else:
+                        early_stopping_counter += 1
+                        print_rank0(f"  No improvement. Early stopping counter: {early_stopping_counter}/{early_stopping_patience}")
+                        if early_stopping_counter >= early_stopping_patience:
+                            print_rank0(f"STOP: Early stopping triggered after {epoch+1} epochs")
+                            early_stopping_triggered = True
+                            break
                     # Log to file
                     with open(out_dir / "val_stats.json", "a") as f:
                         f.write(json.dumps({
