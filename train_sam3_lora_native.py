@@ -1,5 +1,7 @@
-
 #!/usr/bin/env python3
+
+import torch
+torch.backends.cudnn.enabled = False
 """
 SAM3 LoRA Training Script
 
